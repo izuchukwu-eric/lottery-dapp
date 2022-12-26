@@ -1,16 +1,20 @@
 import type { NextPage } from 'next'
 import Head from 'next/head'
 import Header from '../components/Header'
-import { useContract, useAddress, useMetamask, useDisconnect, useContractWrite, useContractRead } from '@thirdweb-dev/react'
+import { useContract, useAddress, useContractWrite, useContractRead } from '@thirdweb-dev/react'
 import Login from '../components/Login'
 import Loading from '../components/Loading'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ethers } from 'ethers'
 import { currency } from '../constants'
 import CountdownTimer from '../components/CountdownTimer'
+import toast from "react-hot-toast"
+import Marquee from 'react-fast-marquee'
+import AdminControls from '../components/AdminControls'
 
 const Home: NextPage = () => {
   const address = useAddress();
+  const [userTickets, setUserTickets] = useState(0)
   const [quantity, setQuantity] = useState<number>(0)
   const { contract, isLoading } = useContract(process.env.NEXT_PUBLIC_LOTTERY_CONTRACT_ADDRESS);
   const { data: remainingTickets } = useContractRead(contract, "RemainingTickets")
@@ -18,8 +22,68 @@ const Home: NextPage = () => {
   const { data: ticketPrice } = useContractRead(contract, "ticketPrice")
   const { data: ticketCommission } = useContractRead(contract, "ticketCommission")
   const { data: expiration } = useContractRead(contract, "expiration")
+  const { mutateAsync: BuyTickets } = useContractWrite(contract, "BuyTickets")
+  const { data: tickets } = useContractRead(contract, "getTickets")
+  const { data: winnings } = useContractRead(contract, "getWinningsForAddress", address)
+  const { mutateAsync: WithdrawWinnings } = useContractWrite(contract, "WithdrawWinnings")
+  const { data: lastWinner } = useContractRead(contract, "lastWinner")
+  const { data: lastWinnerAmount } = useContractRead(contract, "lastWinnerAmount")
+  const { data: isLotteryOperator } = useContractRead(contract, "lotteryOperator")
 
+  useEffect(() => {
+    if(!tickets) return;
 
+    const totalTickets: string[] = tickets
+
+    const noOfUserTickets = totalTickets.reduce((total, ticketAddress) => 
+    (ticketAddress === address ? total + 1 : total), 0);
+
+    setUserTickets(noOfUserTickets)
+  },[tickets, address])
+
+  const handleClick = async () => {
+    if(!ticketPrice) return
+
+    const notification = toast.loading("Buying your tickets...");
+
+    try {
+      const data = await BuyTickets([
+        {
+          value: ethers.utils.parseEther(
+            (Number(ethers.utils.formatEther(ticketPrice)) * quantity).toString()
+          )
+        }
+      ]);
+
+      toast.success("Tickets purchased successfully!", {
+        id: notification
+      })
+    } catch (error) {
+      toast.error("Whoops something went wrong!", {
+        id: notification
+      })
+
+      console.error("contract call failure", error)
+    }
+  }
+
+  const onWithdrawWinnings = async () => {
+    const notification = toast.loading("Withdrawing winnings...");
+
+    try {
+      const data = await WithdrawWinnings([{}])
+
+      toast.success("Winnings withdrawn successfully!", {
+        id: notification
+      })
+    } catch (error) {
+      toast.error("Whoops something went wrong!", {
+        id: notification
+      })
+
+      console.error("contract call failure", error)
+    } 
+  }
 
   if (isLoading) return (<Loading />)
   if (!address) return (<Login />)
@@ -32,6 +96,34 @@ const Home: NextPage = () => {
 
       <div className='flex-1'>
         <Header /> 
+        <Marquee className='bg-[#0A1F1C] p-5 mb-5' gradient={false} speed={100}>
+          <div className='flex space-x-2 mx-10'>
+            <h4 className='text-white font-bold'>Last Winner: {lastWinner?.toString()}</h4>
+            <h4 className='text-white font-bold'>Previous winnings: {" "}
+              {lastWinnerAmount &&
+                ethers.utils.formatEther(lastWinnerAmount?.toString())
+              }{" "}  
+              {currency}
+            </h4>
+          </div>
+        </Marquee>
+
+        {isLotteryOperator === address && (
+          <div className='flex justify-center'>
+            <AdminControls />
+          </div>
+        )}
+
+        {winnings > 0 && (
+          <div className='max-w-md md:max-w-2xl lg:max-w-4xl mx-auto mt-5'>
+            <button onClick={onWithdrawWinnings} className='p-5 bg-gradient-to-b from-orange-500 to-emerald-600 animate-pulse text-center rounded-xl w-full'>
+              <p className='font-bold'>Winner Winner Chicken Dinner!</p>
+              <p>Total Winnings: {ethers.utils.formatEther(winnings.toString())}{" "} {currency}</p>
+              <br />
+              <p className='font-semibold'>Click here to withdraw</p>
+            </button>
+          </div>
+        )}
 
         {/**The next draw box */}
         <div className='space-y-5 md:space-y-0 m-5 md:flex md:flex-row items-start justify-center md:space-x-5'>
@@ -103,17 +195,33 @@ const Home: NextPage = () => {
                 </div>
               </div>
 
-              <button disabled={expiration?.toString() < Date.now().toString() || remainingTickets?.toNumber() === 0} className='mt-5 w-full bg-gradient-to-br from-orange-500 to-emerald-600 px-10 py-5 rounded-md text-white shadow-xl disabled:from-gray-600 disabled:to-gray-600 disabled:text-gray-100 disabled:cursor-not-allowed'>
-                Buy tickets
+              <button 
+                onClick={handleClick} disabled={expiration?.toString() < Date.now().toString() || remainingTickets?.toNumber() === 0} 
+                className='mt-5 w-full font-semibold bg-gradient-to-br from-orange-500 to-emerald-600 px-10 py-5 rounded-md text-white shadow-xl disabled:from-gray-600 disabled:to-gray-600 disabled:text-gray-100 disabled:cursor-not-allowed'
+                >
+                Buy {quantity} tickets for {ticketPrice && 
+                  Number(ethers.utils.formatEther(ticketPrice.toString())) * quantity} {" "} {currency}
               </button>
             </div>
+
+            {userTickets > 0 && (
+              <div className='stats'>
+                <p className='text-lg mb-2'>You have {userTickets} Tickets in this draw</p>
+
+                <div className='flex max-w-sm flex-wrap gap-x-2 gap-y-2'>
+                  {Array(userTickets).fill("").map((_, index) => (
+                    <p 
+                      key={index} 
+                      className="text-emerald-300 h-20 w-12 bg-emerald-500/30 rounded-lg flex flex-shrink-0 items-center justify-center text-xs italic">
+                        {index + 1}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
-
-
-      {/**the price per ticket box */}
-      <div></div>
     </div>
   )
 }
