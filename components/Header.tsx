@@ -1,11 +1,15 @@
-import React from 'react'
+import React, { useState } from 'react'
 import NavButton from './NavButton'
+import { WalletChatWidget } from 'react-wallet-chat-v0'
+import 'react-wallet-chat-v0/dist/index.css'
 import { Bars3BottomRightIcon } from "@heroicons/react/24/solid"
-import { useAddress, useDisconnect } from '@thirdweb-dev/react'
+import { useAddress, useContract, useDisconnect } from '@thirdweb-dev/react'
 
 function Header() {
     const address = useAddress()
     const disConnect = useDisconnect()
+    const { contract } = useContract(process.env.NEXT_PUBLIC_LOTTERY_CONTRACT_ADDRESS);
+    const [widgetState, setWidgetState] = useState({})
 
   return (
     <header className='grid grid-cols-2 md:grid-cols-5 justify-between items-center p-5'>
@@ -24,11 +28,22 @@ function Header() {
         <div className='hidden md:flex md:col-span-3 items-center justify-center rounded-md'>
             <div className='bg-[#0A1F1C] p-4 space-x-2'>
                 <NavButton isActive title='Buy Ticket' />
+                <NavButton onClick={() => {
+                    setWidgetState(
+                        {
+                        ...widgetState, 
+                        chatAddr: contract?.getAddress(),
+                        isOpen: true
+                        }
+                    )}}
+                    title='Chat With Owner' 
+                />
                 <NavButton onClick={disConnect} title='Logout' />
             </div>
         </div>
 
         <div className='flex flex-col ml-auto text-right'>
+            <WalletChatWidget widgetState={widgetState} />
             <Bars3BottomRightIcon className='h-8 w-8 mx-auto text-white cursor-pointer' />
             <span className='md:hidden'>
                 <NavButton onClick={disConnect} title='Logout' />

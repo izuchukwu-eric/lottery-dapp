@@ -1,0 +1,1 @@
+declare module 'react-wallet-chat-v0'
