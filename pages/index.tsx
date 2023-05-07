@@ -11,11 +11,15 @@ import CountdownTimer from '../components/CountdownTimer'
 import toast from "react-hot-toast"
 import Marquee from 'react-fast-marquee'
 import AdminControls from '../components/AdminControls'
+import NavButton from '../components/NavButton'
+import { WalletChatWidget } from 'react-wallet-chat-v0'
+import 'react-wallet-chat-v0/dist/index.css'
 
 const Home: NextPage = () => {
   const address = useAddress();
   const [userTickets, setUserTickets] = useState(0)
   const [quantity, setQuantity] = useState<number>(0)
+  const [widgetState, setWidgetState] = useState({})
   const { contract, isLoading } = useContract(process.env.NEXT_PUBLIC_LOTTERY_CONTRACT_ADDRESS);
   const { data: remainingTickets } = useContractRead(contract, "RemainingTickets")
   const { data: currentWinningReward } = useContractRead(contract, "CurrentWinningReward")
@@ -98,8 +102,18 @@ const Home: NextPage = () => {
         <Header /> 
         <Marquee className='bg-[#0A1F1C] p-5 mb-5' gradient={false} speed={100}>
           <div className='flex space-x-2 mx-10'>
-            <h4 className='text-white font-bold'>Last Winner: {lastWinner?.toString()}</h4>
-            <h4 className='text-white font-bold'>Previous winnings: {" "}
+            <h4 className='text-white font-bold mt-2'>Last Winner: {lastWinner?.toString()}</h4>
+            <NavButton onClick={() => {
+                    setWidgetState(
+                        {
+                        ...widgetState, 
+                        chatAddr: lastWinner?.toString(),
+                        isOpen: true
+                        }
+                    )}}
+                    title='Chat With Last Winner' 
+            />
+            <h4 className='text-white font-bold mt-2'>Previous winnings: {" "}
               {lastWinnerAmount &&
                 ethers.utils.formatEther(lastWinnerAmount?.toString())
               }{" "}  
@@ -203,6 +217,8 @@ const Home: NextPage = () => {
                   Number(ethers.utils.formatEther(ticketPrice.toString())) * quantity} {" "} {currency}
               </button>
             </div>
+
+            <WalletChatWidget widgetState={widgetState} />
 
             {userTickets > 0 && (
               <div className='stats'>
