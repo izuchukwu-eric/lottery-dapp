@@ -12,7 +12,7 @@ import toast from "react-hot-toast"
 import Marquee from 'react-fast-marquee'
 import AdminControls from '../components/AdminControls'
 import NavButton from '../components/NavButton'
-import { WalletChatWidget } from 'react-wallet-chat-v0'
+import { ChatWithOwner  } from 'react-wallet-chat'
 import 'react-wallet-chat-v0/dist/index.css'
 
 const Home: NextPage = () => {
@@ -103,7 +103,7 @@ const Home: NextPage = () => {
         <Marquee className='bg-[#0A1F1C] p-5 mb-5' gradient={false} speed={100}>
           <div className='flex space-x-2 mx-10'>
             <h4 className='text-white font-bold mt-2'>Last Winner: {lastWinner?.toString()}</h4>
-            <NavButton onClick={() => {
+            {/* <NavButton onClick={() => {
                     setWidgetState(
                         {
                         ...widgetState, 
@@ -112,7 +112,13 @@ const Home: NextPage = () => {
                         }
                     )}}
                     title='Chat With Last Winner' 
-            />
+            /> */}
+            {lastWinner && (
+              <ChatWithOwner
+                ownerAddress={lastWinner}
+                render={<NavButton title='Chat With Last Winner'  />}
+              />
+            )}
             <h4 className='text-white font-bold mt-2'>Previous winnings: {" "}
               {lastWinnerAmount &&
                 ethers.utils.formatEther(lastWinnerAmount?.toString())
@@ -218,7 +224,7 @@ const Home: NextPage = () => {
               </button>
             </div>
 
-            <WalletChatWidget widgetState={widgetState} />
+            {/* <WalletChatWidget widgetState={widgetState} /> */}
 
             {userTickets > 0 && (
               <div className='stats'>
