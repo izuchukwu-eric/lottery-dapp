@@ -13,7 +13,6 @@ import Marquee from 'react-fast-marquee'
 import AdminControls from '../components/AdminControls'
 import NavButton from '../components/NavButton'
 import { ChatWithOwner  } from 'react-wallet-chat'
-import 'react-wallet-chat-v0/dist/index.css'
 
 const Home: NextPage = () => {
   const address = useAddress();
